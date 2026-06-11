@@ -40,7 +40,7 @@ logging.basicConfig(
 )
 log = logging.getLogger("amneziawg-telegram-bot")
 
-
+current_bot_version = 'v26.06.11 RC3'
 DEFAULT_DNS_SERVERS = ["1.1.1.1", "1.0.0.1", "8.8.8.8", "9.9.9.9"]
 MAX_CLIENTS_24 = 253
 LIMIT_PERIODS = {"never", "day", "week", "month"}
@@ -243,7 +243,7 @@ def cancel_keyboard() -> InlineKeyboardMarkup:
 
 def back_menu() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
-        inline_keyboard=[[InlineKeyboardButton(text="🏠 Меню", callback_data="menu")]]
+        inline_keyboard=[[InlineKeyboardButton(text="🏠 Главное меню", callback_data="menu")]]
     )
 
 
@@ -923,11 +923,24 @@ def actor_info(message_or_callback: Message | CallbackQuery) -> tuple[Optional[i
     username = f"@{user.username}" if user.username else None
     return user.id, username
 
+# Оригинал
+#async def reject_message_if_not_admin(message: Message) -> bool:
+#    user_id = message.from_user.id if message.from_user else None
+#    if not db.is_admin(user_id):
+#        await message.answer("⛔ Доступ запрещён.")
+#        db.audit(user_id, None, "access_denied", details={"type": "message"})
+#        return True
+#    return False
 
+# Вишенка на торте
 async def reject_message_if_not_admin(message: Message) -> bool:
     user_id = message.from_user.id if message.from_user else None
     if not db.is_admin(user_id):
-        await message.answer("⛔ Доступ запрещён.")
+        # Отправляем фото по URL с подписью
+        await message.answer_photo(
+            photo="https://images.meme-arsenal.com/b9d933256b7dd5d53ea2c89583b7a80d.jpg",
+            caption="⛔ Доступ запрещён."
+        )
         db.audit(user_id, None, "access_denied", details={"type": "message"})
         return True
     return False
@@ -945,7 +958,7 @@ async def reject_callback_if_not_admin(callback: CallbackQuery) -> bool:
 async def reject_message_if_not_owner(message: Message) -> bool:
     user_id = message.from_user.id if message.from_user else None
     if not db.is_owner(user_id):
-        await message.answer("⛔ Это действие доступно только owner.")
+        await message.answer("⛔ Это действие доступно только владельцу.")
         return True
     return False
 
@@ -953,7 +966,7 @@ async def reject_message_if_not_owner(message: Message) -> bool:
 async def reject_callback_if_not_owner(callback: CallbackQuery) -> bool:
     user_id = callback.from_user.id if callback.from_user else None
     if not db.is_owner(user_id):
-        await callback.answer("Только owner", show_alert=True)
+        await callback.answer("Только владелец", show_alert=True)
         return True
     return False
 
@@ -962,24 +975,24 @@ def main_menu() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
         inline_keyboard=[
             [
-                InlineKeyboardButton(text="👥 Клиенты", callback_data="peers:0:all"),
-                InlineKeyboardButton(text="📊 Сервер", callback_data="server"),
+                InlineKeyboardButton(text="👥 Пользователи", callback_data="peers:0:all"),
+                InlineKeyboardButton(text="📊 Стат. сервера", callback_data="server"),
             ],
             [
-                InlineKeyboardButton(text="➕ Создать", callback_data="create_user"),
-                InlineKeyboardButton(text="🩺 Health", callback_data="health"),
+                InlineKeyboardButton(text="➕ Созд. польз.", callback_data="create_user"),
+                InlineKeyboardButton(text="🩺 Healthcheck", callback_data="health"),
             ],
             [
                 InlineKeyboardButton(text="⚙️ I1-I5", callback_data="i_settings"),
                 InlineKeyboardButton(text="🌐 DNS", callback_data="dns"),
             ],
             [
-                InlineKeyboardButton(text="🧩 Конфиг", callback_data="config_settings"),
+                InlineKeyboardButton(text="🧩 IPv6", callback_data="config_settings"),
                 InlineKeyboardButton(text="👮 Админы", callback_data="admins"),
             ],
             [
                 InlineKeyboardButton(text="📜 Лог бота", callback_data="bot_log"),
-                InlineKeyboardButton(text="📋 Events web", callback_data="web_events"),
+                InlineKeyboardButton(text="📋 Лог web-панели", callback_data="web_events"),
             ],
         ]
     )
@@ -1011,12 +1024,12 @@ def peers_keyboard(peers: list[dict[str, Any]], page: int, status_filter: str) -
     rows: list[list[InlineKeyboardButton]] = [
         [
             InlineKeyboardButton(text="Все", callback_data="peers:0:all"),
-            InlineKeyboardButton(text="Online", callback_data="peers:0:online"),
-            InlineKeyboardButton(text="Offline", callback_data="peers:0:offline"),
+            InlineKeyboardButton(text="В сети", callback_data="peers:0:online"),
+            InlineKeyboardButton(text="Не в сети", callback_data="peers:0:offline"),
         ],
         [
-            InlineKeyboardButton(text="Disabled", callback_data="peers:0:disabled"),
-            InlineKeyboardButton(text="Never", callback_data="peers:0:never"),
+            InlineKeyboardButton(text="Деактивированные", callback_data="peers:0:disabled"),
+            InlineKeyboardButton(text="Никогда не подкл.", callback_data="peers:0:never"),
         ],
     ]
 
@@ -1040,7 +1053,7 @@ def peers_keyboard(peers: list[dict[str, Any]], page: int, status_filter: str) -
     if nav:
         rows.append(nav)
 
-    rows.append([InlineKeyboardButton(text="🏠 Меню", callback_data="menu")])
+    rows.append([InlineKeyboardButton(text="🏠 Главное меню", callback_data="menu")])
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
@@ -1062,14 +1075,14 @@ def peer_keyboard(peer_id: int, disabled: bool) -> InlineKeyboardMarkup:
             ],
             [
                 InlineKeyboardButton(
-                    text="✅ Enable" if disabled else "⛔ Disable",
+                    text="✅ Активировать" if disabled else "⛔ Деактивировать",
                     callback_data=f"toggle:{peer_id}:{0 if disabled else 1}",
                 ),
                 InlineKeyboardButton(text="🗑 Удалить", callback_data=f"remove_confirm:{peer_id}"),
             ],
             [
                 InlineKeyboardButton(text="👥 К списку", callback_data="peers:0:all"),
-                InlineKeyboardButton(text="🏠 Меню", callback_data="menu"),
+                InlineKeyboardButton(text="🏠 Главное меню", callback_data="menu"),
             ],
         ]
     )
@@ -1079,7 +1092,7 @@ def server_keyboard(user_id: Optional[int]) -> InlineKeyboardMarkup:
     rows = []
     if db.is_owner(user_id):
         rows.append([InlineKeyboardButton(text="🧹 Сбросить статистику бота", callback_data="stats_reset_confirm")])
-    rows.append([InlineKeyboardButton(text="🏠 Меню", callback_data="menu")])
+    rows.append([InlineKeyboardButton(text="🏠 Главное меню", callback_data="menu")])
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
@@ -1107,17 +1120,14 @@ def format_peers(peers: list[dict[str, Any]], status_filter: str) -> str:
 
     return (
         "<b>👥 Клиенты AmneziaWG</b>\n\n"
-        "<b>Сеть:</b>\n"
-        "Маска: <code>/24</code>\n"
-        f"Максимум клиентов: <b>{MAX_CLIENTS_24}</b>\n"
+        "<b>🌐 Сеть:</b>\n"
         f"Создано: <b>{total}</b>\n"
         f"Можно создать ещё: <b>{free}</b>\n\n"
         f"Фильтр: <b>{h(status_filter)}</b>\n"
-        f"Всего: <b>{total}</b>\n"
-        f"🟢 online: <b>{online}</b>\n"
-        f"🟡 inactive: <b>{inactive}</b>\n"
-        f"⚪ never: <b>{never}</b>\n"
-        f"🔴 disabled: <b>{disabled}</b>"
+        f"🟢 В сети: <b>{online}</b>\n"
+        f"🟡 Не в сети: <b>{inactive}</b>\n"
+        f"⚪ Никогда не подкл.: <b>{never}</b>\n"
+        f"🔴 Деактивированных: <b>{disabled}</b>"
     )
 
 
@@ -1125,13 +1135,15 @@ def format_peer(peer: dict[str, Any]) -> str:
     conn = str(peer.get("connection_status") or "")
     ident = str(peer.get("identity_status") or "")
     peer_id = int(peer.get("id") or 0)
+    client_ip_address = h(peer.get('endpoint').split(':')[0])
+    awg2_ipv4_address = h(peer.get('allowed_ips', '').split(',')[0].split('/')[0])
 
     created = db.get_bot_created_peer(peer_id) if peer_id else None
     if created:
         created_text = h(format_datetime_local(created["created_at"]))
         created_by = f"\n<b>Создал:</b> <code>{h(created['created_by_telegram_id'])}</code> {h(created['created_by_username'])}"
     else:
-        created_text = "неизвестно"
+        created_text = "-не через бота-"
         created_by = ""
 
     limit = db.get_peer_limit(peer_id) if peer_id else None
@@ -1145,26 +1157,19 @@ def format_peer(peer: dict[str, Any]) -> str:
         limit_text = "не задан"
 
     return (
-        f"<b>{status_icon(conn)} {h(peer_title(peer))}</b>\n\n"
-        f"<b>ID:</b> <code>{h(peer.get('id'))}</code>\n"
-        f"<b>Public key:</b> <code>{h(peer.get('public_key'))}</code>\n\n"
-        f"<b>Создан ботом:</b> {created_text}"
+        f"<b>{status_icon(conn)} {h(peer_title(peer))}</b>\n"
+        f"<b>Создан:</b> {created_text}"
         f"{created_by}\n\n"
-        f"<b>Лимит:</b> {limit_text}\n\n"
-        f"<b>Connection:</b> {h(conn)}\n"
-        f"<b>Identity:</b> {h(ident)}\n"
-        f"<b>Disabled:</b> {h(peer.get('disabled'))}\n"
-        f"<b>Has config:</b> {h(peer.get('has_config'))}\n\n"
-        f"<b>Last handshake:</b> {h(format_datetime_local(peer.get('latest_handshake_at')))}\n"
-        f"<b>Endpoint:</b> <code>{h(peer.get('endpoint'))}</code>\n"
-        f"<b>Allowed IPs:</b> <code>{h(peer.get('allowed_ips'))}</code>\n\n"
-        f"<b>RX total:</b> {fmt_bytes(peer.get('rx_bytes'))}\n"
-        f"<b>TX total:</b> {fmt_bytes(peer.get('tx_bytes'))}\n\n"
-        f"<b>Config:</b> {h(peer.get('config_name'))}\n"
-        f"<b>Friendly:</b> {h(peer.get('friendly_name'))}\n"
-        f"<b>Display name:</b> {h(peer.get('display_name'))}\n"
-        f"<b>Comment:</b> {h(peer.get('comment'))}\n\n"
-        f"<b>Обновлено:</b> {h(local_now_display())}"
+        f"<b>Деактивирован:</b> {h(peer.get('disabled'))}\n"
+        f"<b>⏳ Последнее 🤝:</b> {h(format_datetime_local(peer.get('latest_handshake_at')))}\n"
+        f"<b>🌐 Внутренний IPv4:</b> <code>{awg2_ipv4_address}</code>\n"
+        f"<b>🌐 IP клиента:</b> <tg-spoiler><a href='http://check-host.net/ip-info?host={client_ip_address}'>{client_ip_address}</a></tg-spoiler>\n"
+        f"<b>🔽 Входящий трафик:</b> ↓{fmt_bytes(peer.get('tx_bytes'))}\n"
+        f"<b>🔼 Исходящий трафик:</b> ↑{fmt_bytes(peer.get('rx_bytes'))}\n"
+        f"<b>📅 Лимит:</b> {limit_text}\n"
+        f"<b>📝 Комментарий</b> {h(peer.get('comment'))}\n\n"
+        f"➖➖➖\n"
+        f"<b>🕑 Обновлено:</b> {h(local_now_display())}"
     )
 
 
@@ -1173,7 +1178,7 @@ def format_usage_summary(data: dict[str, Any]) -> str:
 
     def pair(period: str) -> str:
         item = data.get(period) or {}
-        return f"<b>{period}:</b> RX {fmt_bytes(item.get('rx_bytes'))} / TX {fmt_bytes(item.get('tx_bytes'))}"
+        return f"{fmt_bytes(item.get('tx_bytes'))} / {fmt_bytes(item.get('rx_bytes'))}"
 
     day = data.get("day") or {}
     today = datetime.now(timezone.utc).date().isoformat()
@@ -1190,15 +1195,12 @@ def format_usage_summary(data: dict[str, Any]) -> str:
     year_rx, year_tx = db.yearly_peer_usage(peer_id) if peer_id else (0, 0)
 
     return (
-        f"<b>📈 Трафик пользователя</b>\n\n"
-        f"<b>{h(data.get('name'))}</b>\n"
-        f"Peer ID: <code>{h(data.get('peer_id'))}</code>\n\n"
-        f"{pair('day')}\n"
-        f"{pair('week')}\n"
-        f"{pair('month')}\n"
-        f"<b>year SQLite:</b> RX {fmt_bytes(year_rx)} / TX {fmt_bytes(year_tx)}\n\n"
-        "Годовая статистика клиента берётся из SQLite бота и начинает копиться с момента установки бота.\n"
-        "Статистика amneziawg-web через API здесь не сбрасывается."
+        f"<b>📈 Трафик пользователя {h(data.get('name'))}</b>\n\n"
+        f"<b>🔽 Download / 🔼 Upload</b>\n"
+        f"<b>⏰ За день:</b> {pair('day')}\n"
+        f"<b>📆 За неделю:</b> {pair('week')}\n"
+        f"<b>🌙 За месяц:</b> {pair('month')}\n"
+        f"<b>🎄 За год:</b> {fmt_bytes(year_tx)} / {fmt_bytes(year_rx)}"
     )
 
 
@@ -1220,11 +1222,12 @@ def format_server_usage(day: dict[str, Any], week: dict[str, Any], month: dict[s
     year_rx, year_tx = db.yearly_server_usage()
 
     return (
-        "<b>📊 Сервер AmneziaWG</b>\n\n"
-        f"<b>День:</b> RX {fmt_bytes(day_rx)} / TX {fmt_bytes(day_tx)}\n"
-        f"<b>Неделя:</b> RX {fmt_bytes(week_rx)} / TX {fmt_bytes(week_tx)}\n"
-        f"<b>Месяц:</b> RX {fmt_bytes(month_rx)} / TX {fmt_bytes(month_tx)}\n"
-        f"<b>Год SQLite:</b> RX {fmt_bytes(year_rx)} / TX {fmt_bytes(year_tx)}\n\n"
+        "<b>📊 Статистика сервера AmneziaWG</b>\n\n"
+        f"<b>🔽 Download / 🔼 Upload</b>\n"
+        f"<b>⏰ За день:</b> {fmt_bytes(day_tx)} / {fmt_bytes(day_rx)}\n"
+        f"<b>📆 За неделю:</b> {fmt_bytes(week_tx)} / {fmt_bytes(week_rx)}\n"
+        f"<b>🌙 За месяц:</b> {fmt_bytes(month_tx)} / {fmt_bytes(month_rx)}\n"
+        f"<b>🎄 За год:</b> {fmt_bytes(year_tx)} / {fmt_bytes(year_rx)}\n\n"
         "Годовая статистика берётся из SQLite бота и начинает копиться с момента установки бота."
     )
 
@@ -1416,7 +1419,7 @@ async def start(message: Message) -> None:
         return
 
     text = (
-        "<b>🛡 AmneziaWG Telegram Admin</b>\n\n"
+        "<b>🛡 AmneziaWG Telegram Admin</b> <code>{current_bot_version}</code>\n\n"
         "Бот управляет <b>amneziawg-web</b> через его HTTP API.\n"
         "Сам VPN/backend слой — это AmneziaWG/amneziawg-proxy, а бот напрямую с ним не работает.\n\n"
         "Файлы .conf на диске бот не изменяет: исправления DNS, Address и I1-I5 применяются только к копии, отправляемой в Telegram."
@@ -1446,7 +1449,7 @@ async def cb_cancel_input(callback: CallbackQuery, state: FSMContext) -> None:
 async def cb_menu(callback: CallbackQuery) -> None:
     if await reject_callback_if_not_admin(callback):
         return
-    await safe_edit(callback, "<b>🏠 Главное меню</b>", main_menu())
+    await safe_edit(callback, f"<b>🏠 Главное меню</b>\n\n<code>{current_bot_version}</code>", main_menu())
     await callback.answer()
 
 
@@ -1515,7 +1518,7 @@ async def cb_peer_usage(callback: CallbackQuery) -> None:
                 inline_keyboard=[
                     [InlineKeyboardButton(text="🧹 Сбросить статистику бота", callback_data=f"peer_stats_reset_confirm:{peer_id}")],
                     [InlineKeyboardButton(text="⬅️ К клиенту", callback_data=f"peer:{peer_id}")],
-                    [InlineKeyboardButton(text="🏠 Меню", callback_data="menu")],
+                    [InlineKeyboardButton(text="🏠 Главное меню", callback_data="menu")],
                 ]
             ),
         )
@@ -1574,7 +1577,7 @@ async def cb_peer_stats_reset(callback: CallbackQuery) -> None:
             inline_keyboard=[
                 [InlineKeyboardButton(text="⬅️ К трафику клиента", callback_data=f"peer_usage:{peer_id}")],
                 [InlineKeyboardButton(text="⬅️ К клиенту", callback_data=f"peer:{peer_id}")],
-                [InlineKeyboardButton(text="🏠 Меню", callback_data="menu")],
+                [InlineKeyboardButton(text="🏠 Главное меню", callback_data="menu")],
             ]
         ),
     )
@@ -1603,9 +1606,7 @@ async def cb_limit(callback: CallbackQuery) -> None:
             limit_text = "Лимит не задан."
 
         text = (
-            "<b>🚦 Лимит трафика клиента</b>\n\n"
-            f"Клиент: <b>{h(peer_title(peer))}</b>\n"
-            f"Peer ID: <code>{peer_id}</code>\n\n"
+            "<b>🚦 Лимит трафика пользователя {h(peer_title(peer))}</b>\n\n"
             f"{limit_text}\n\n"
             "Чтобы задать или изменить лимит, нажмите одну из кнопок <b>Задать</b> ниже.\n"
             "После выбора периода бот попросит ввести само значение лимита.\n\n"
@@ -1626,8 +1627,8 @@ async def cb_limit(callback: CallbackQuery) -> None:
                     InlineKeyboardButton(text="Проверить сейчас", callback_data=f"limit_check:{peer_id}"),
                 ],
                 [
-                    InlineKeyboardButton(text="⬅️ К клиенту", callback_data=f"peer:{peer_id}"),
-                    InlineKeyboardButton(text="🏠 Меню", callback_data="menu"),
+                    InlineKeyboardButton(text="⬅️ Назад", callback_data=f"peer:{peer_id}"),
+                    InlineKeyboardButton(text="🏠 Главное меню", callback_data="menu"),
                 ],
             ]
         )
@@ -2173,7 +2174,7 @@ async def cb_i_settings(callback: CallbackQuery) -> None:
         for i in range(1, 6):
             rows.append([InlineKeyboardButton(text=f"Изменить I{i}", callback_data=f"set_i:{i}")])
 
-    rows.append([InlineKeyboardButton(text="🏠 Меню", callback_data="menu")])
+    rows.append([InlineKeyboardButton(text="🏠 Главное меню", callback_data="menu")])
 
     await safe_edit(callback, "\n".join(lines), InlineKeyboardMarkup(inline_keyboard=rows))
     await callback.answer()
@@ -2252,7 +2253,7 @@ async def cb_config_settings(callback: CallbackQuery) -> None:
                         callback_data="toggle_remove_ipv6",
                     )
                 ],
-                [InlineKeyboardButton(text="🏠 Меню", callback_data="menu")],
+                [InlineKeyboardButton(text="🏠 Главное меню", callback_data="menu")],
             ]
         ),
     )
@@ -2312,7 +2313,7 @@ async def cb_dns(callback: CallbackQuery) -> None:
         )
 
     rows.append([InlineKeyboardButton(text="➕ Добавить/изменить пресет", callback_data="dns_add")])
-    rows.append([InlineKeyboardButton(text="🏠 Меню", callback_data="menu")])
+    rows.append([InlineKeyboardButton(text="🏠 Главное меню", callback_data="menu")])
 
     await safe_edit(callback, "\n".join(lines), InlineKeyboardMarkup(inline_keyboard=rows))
     await callback.answer()
@@ -2418,10 +2419,10 @@ async def cb_admins(callback: CallbackQuery) -> None:
 
     markup_rows = []
     if db.is_owner(callback.from_user.id):
-        markup_rows.append([InlineKeyboardButton(text="➕ Добавить admin", callback_data="admin_add:admin")])
-        markup_rows.append([InlineKeyboardButton(text="➕ Добавить owner", callback_data="admin_add:owner")])
+        markup_rows.append([InlineKeyboardButton(text="➕ Добавить админа", callback_data="admin_add:admin")])
+        markup_rows.append([InlineKeyboardButton(text="➕ Добавить владельца", callback_data="admin_add:owner")])
         markup_rows.append([InlineKeyboardButton(text="🗑 Удалить админа", callback_data="admin_remove")])
-    markup_rows.append([InlineKeyboardButton(text="🏠 Меню", callback_data="menu")])
+    markup_rows.append([InlineKeyboardButton(text="🏠 Главное меню", callback_data="menu")])
 
     await safe_edit(callback, "\n".join(lines), InlineKeyboardMarkup(inline_keyboard=markup_rows))
     await callback.answer()
@@ -2507,9 +2508,9 @@ async def cb_bot_log(callback: CallbackQuery) -> None:
         lines.append("Пусто.")
     for r in rows:
         lines.append(
-            f"• <b>{h(r['action'])}</b> — {h(format_datetime_local(r['created_at']))}\n"
-            f"  actor: <code>{h(r['actor_telegram_id'])}</code> {h(r['actor_username'])}\n"
-            f"  target: {h(r['target_type'])} <code>{h(r['target_id'])}</code> {h(r['target_name'])}"
+            f"• 🕰 {h(format_datetime_local(r['created_at']))} — <b>{h(r['action'])}</b>\n"
+            f"  🤷 Кто: {h(r['actor_username'])} (<code>{h(r['actor_telegram_id'])}</code>)\n"
+            f"  🤔 Кого: {h(r['target_type'])} <code>{h(r['target_id'])}</code> {h(r['target_name'])}"
         )
 
     await safe_edit(callback, "\n".join(lines), back_menu())
@@ -2523,19 +2524,19 @@ async def cb_web_events(callback: CallbackQuery) -> None:
 
     try:
         events = await api.events(cfg.events_limit)
-        lines = ["<b>📋 Events amneziawg-web</b>", ""]
+        lines = ["<b>📋 Журнал amneziawg-web</b>", ""]
         if not events:
             lines.append("Пусто.")
         for e in events:
             lines.append(
-                f"• <b>{h(e.get('event_type'))}</b> — {h(format_datetime_local(e.get('created_at')))}\n"
-                f"  actor: {h(e.get('actor'))}\n"
+                f"• {h(format_datetime_local(e.get('created_at')))} — <b>{h(e.get('event_type'))}</b>\n"
+                f"  Кто: {h(e.get('actor'))}\n"
                 f"  peer: <code>{h(e.get('peer_id'))}</code>\n"
-                f"  payload: <code>{h(e.get('payload'))}</code>"
+                f"  Данные: <code>{h(e.get('payload'))}</code>"
             )
         await safe_edit(callback, "\n".join(lines), back_menu())
     except ApiError as exc:
-        await safe_edit(callback, f"<b>❌ Ошибка events</b>\n\n<code>{h(exc)}</code>", back_menu())
+        await safe_edit(callback, f"<b>❌ Ошибка журнала</b>\n\n<code>{h(exc)}</code>", back_menu())
 
     await callback.answer()
 
