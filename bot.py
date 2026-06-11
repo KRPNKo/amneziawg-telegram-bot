@@ -40,7 +40,7 @@ logging.basicConfig(
 )
 log = logging.getLogger("amneziawg-telegram-bot")
 
-current_bot_version = 'v26.06.11 RC3'
+current_bot_version = 'v26.06.11 RC4'
 DEFAULT_DNS_SERVERS = ["1.1.1.1", "1.0.0.1", "8.8.8.8", "9.9.9.9"]
 MAX_CLIENTS_24 = 253
 LIMIT_PERIODS = {"never", "day", "week", "month"}
@@ -1119,15 +1119,16 @@ def format_peers(peers: list[dict[str, Any]], status_filter: str) -> str:
     free = max(MAX_CLIENTS_24 - total, 0)
 
     return (
-        "<b>👥 Клиенты AmneziaWG</b>\n\n"
-        "<b>🌐 Сеть:</b>\n"
+        "<b>👥 Пользователи AmneziaWG2</b>\n\n"
         f"Создано: <b>{total}</b>\n"
         f"Можно создать ещё: <b>{free}</b>\n\n"
-        f"Фильтр: <b>{h(status_filter)}</b>\n"
         f"🟢 В сети: <b>{online}</b>\n"
         f"🟡 Не в сети: <b>{inactive}</b>\n"
         f"⚪ Никогда не подкл.: <b>{never}</b>\n"
-        f"🔴 Деактивированных: <b>{disabled}</b>"
+        f"🔴 Деактивированных: <b>{disabled}</b>\n\n"
+        f"Текущий фильтр: <b>{h(status_filter)}</b>\n\n"
+        f"➖➖➖\n"
+        f"<b>🕑 Обновлено:</b> {h(local_now_display())}"
     )
 
 
@@ -1154,20 +1155,20 @@ def format_peer(peer: dict[str, Any]) -> str:
             f"отключён ботом: {h(bool(limit['bot_disabled']))}"
         )
     else:
-        limit_text = "не задан"
+        limit_text = "-не задан-"
 
     return (
         f"<b>{status_icon(conn)} {h(peer_title(peer))}</b>\n"
-        f"<b>Создан:</b> {created_text}"
-        f"{created_by}\n\n"
-        f"<b>Деактивирован:</b> {h(peer.get('disabled'))}\n"
+        f"  <b>Создан:</b> {created_text}"
+        f"  {created_by}\n\n"
+        f"  <b>Деактивирован:</b> {h(peer.get('disabled'))}\n"
         f"<b>⏳ Последнее 🤝:</b> {h(format_datetime_local(peer.get('latest_handshake_at')))}\n"
         f"<b>🌐 Внутренний IPv4:</b> <code>{awg2_ipv4_address}</code>\n"
         f"<b>🌐 IP клиента:</b> <tg-spoiler><a href='http://check-host.net/ip-info?host={client_ip_address}'>{client_ip_address}</a></tg-spoiler>\n"
-        f"<b>🔽 Входящий трафик:</b> ↓{fmt_bytes(peer.get('tx_bytes'))}\n"
-        f"<b>🔼 Исходящий трафик:</b> ↑{fmt_bytes(peer.get('rx_bytes'))}\n"
+        f"<b>🔽 Входящий трафик:</b> ↓ {fmt_bytes(peer.get('tx_bytes'))}\n"
+        f"<b>🔼 Исходящий трафик:</b> ↑ {fmt_bytes(peer.get('rx_bytes'))}\n"
         f"<b>📅 Лимит:</b> {limit_text}\n"
-        f"<b>📝 Комментарий</b> {h(peer.get('comment'))}\n\n"
+        f"<b>📝 Комментарий:</b> {h(peer.get('comment'))}\n\n"
         f"➖➖➖\n"
         f"<b>🕑 Обновлено:</b> {h(local_now_display())}"
     )
@@ -1178,7 +1179,7 @@ def format_usage_summary(data: dict[str, Any]) -> str:
 
     def pair(period: str) -> str:
         item = data.get(period) or {}
-        return f"{fmt_bytes(item.get('tx_bytes'))} / {fmt_bytes(item.get('rx_bytes'))}"
+        return f"↓ {fmt_bytes(item.get('tx_bytes'))} / ↑ {fmt_bytes(item.get('rx_bytes'))}"
 
     day = data.get("day") or {}
     today = datetime.now(timezone.utc).date().isoformat()
@@ -1197,10 +1198,11 @@ def format_usage_summary(data: dict[str, Any]) -> str:
     return (
         f"<b>📈 Трафик пользователя {h(data.get('name'))}</b>\n\n"
         f"<b>🔽 Download / 🔼 Upload</b>\n"
+        f"➖➖➖➖➖➖➖➖\n"
         f"<b>⏰ За день:</b> {pair('day')}\n"
         f"<b>📆 За неделю:</b> {pair('week')}\n"
         f"<b>🌙 За месяц:</b> {pair('month')}\n"
-        f"<b>🎄 За год:</b> {fmt_bytes(year_tx)} / {fmt_bytes(year_rx)}"
+        f"<b>🎄 За год:</b> ↓ {fmt_bytes(year_tx)} / ↑ {fmt_bytes(year_rx)}"
     )
 
 
@@ -1222,12 +1224,13 @@ def format_server_usage(day: dict[str, Any], week: dict[str, Any], month: dict[s
     year_rx, year_tx = db.yearly_server_usage()
 
     return (
-        "<b>📊 Статистика сервера AmneziaWG</b>\n\n"
+        "<b>📊 Статистика сервера AmneziaWG2</b>\n\n"
         f"<b>🔽 Download / 🔼 Upload</b>\n"
-        f"<b>⏰ За день:</b> {fmt_bytes(day_tx)} / {fmt_bytes(day_rx)}\n"
-        f"<b>📆 За неделю:</b> {fmt_bytes(week_tx)} / {fmt_bytes(week_rx)}\n"
-        f"<b>🌙 За месяц:</b> {fmt_bytes(month_tx)} / {fmt_bytes(month_rx)}\n"
-        f"<b>🎄 За год:</b> {fmt_bytes(year_tx)} / {fmt_bytes(year_rx)}\n\n"
+        f"➖➖➖➖➖➖\n"
+        f"<b>⏰ За день:</b> ↓ {fmt_bytes(day_tx)} / ↑ {fmt_bytes(day_rx)}\n"
+        f"<b>📆 За неделю:</b> ↓ {fmt_bytes(week_tx)} / ↑ {fmt_bytes(week_rx)}\n"
+        f"<b>🌙 За месяц:</b> ↓ {fmt_bytes(month_tx)} / ↑ {fmt_bytes(month_rx)}\n"
+        f"<b>🎄 За год:</b> ↓ {fmt_bytes(year_tx)} / ↑ {fmt_bytes(year_rx)}\n\n"
         "Годовая статистика берётся из SQLite бота и начинает копиться с момента установки бота."
     )
 
@@ -1419,7 +1422,7 @@ async def start(message: Message) -> None:
         return
 
     text = (
-        "<b>🛡 AmneziaWG Telegram Admin</b> <code>{current_bot_version}</code>\n\n"
+        "<b>🛡 AmneziaWG2 Telegram Admin</b> <code>{current_bot_version}</code>\n\n"
         "Бот управляет <b>amneziawg-web</b> через его HTTP API.\n"
         "Сам VPN/backend слой — это AmneziaWG/amneziawg-proxy, а бот напрямую с ним не работает.\n\n"
         "Файлы .conf на диске бот не изменяет: исправления DNS, Address и I1-I5 применяются только к копии, отправляемой в Telegram."
@@ -2160,12 +2163,12 @@ async def cb_i_settings(callback: CallbackQuery) -> None:
 
     lines = ["<b>⚙️ Параметры I1-I5</b>", ""]
     if not i1:
-        lines.append("<b>I1:</b> НЕ ЗАДАН ⚠️")
+        lines.append("<b>I1:</b> ⚠️ НЕ ЗАДАН ⚠️")
         lines.append("")
         lines.append("Пока I1 не задан, I2-I5 недоступны.")
     else:
         for i in range(1, 6):
-            lines.append(f"<b>I{i}:</b> <code>{h(vals.get(f'I{i}'))}</code>")
+            lines.append(f"<b>I{i}:</b> <code>{h(vals.get(f'I{i}'))}</code>\n➖➖➖\n")
 
     rows = []
     if not i1:
@@ -2312,7 +2315,7 @@ async def cb_dns(callback: CallbackQuery) -> None:
             ]
         )
 
-    rows.append([InlineKeyboardButton(text="➕ Добавить/изменить пресет", callback_data="dns_add")])
+    rows.append([InlineKeyboardButton(text="➕ Добавить пресет", callback_data="dns_add")])
     rows.append([InlineKeyboardButton(text="🏠 Главное меню", callback_data="menu")])
 
     await safe_edit(callback, "\n".join(lines), InlineKeyboardMarkup(inline_keyboard=rows))
